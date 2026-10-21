@@ -30,9 +30,11 @@
 powershell -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
+Нужны [.NET 10 SDK](https://dotnet.microsoft.com/download) и пакет `FormatWheel.Sdk`. На nuget.org его пока нет: возьмите `FormatWheel.Sdk.x.y.z.nupkg` из [релизов FormatWheel-app](https://github.com/KantraCity/FormatWheel-app/releases) (или соберите `dotnet pack src/FormatWheel.Sdk` в репозитории программы) и подключите папку с ним как источник: `dotnet nuget add source C:\путь\к\папке -n formatwheel-sdk`. GitHub Actions делает это сам. Inno Setup скрипт поставит через winget, если его нет.
+
 ## Как это сделано
 
-Класс реализует `IConverter` из `FormatWheel.Sdk`: на слот Shift кладёт лепестки форматов, в `Convert` запускает `ffmpeg.exe` и парсит его вывод (`Duration` и `time=`) для кольца прогресса. `IsSlow = true`, поэтому файл отдаётся получателю только когда кодирование закончилось. Это рабочий пример для своих расширений — см. `src/FormatWheel.Ffmpeg/Ffmpeg.cs`.
+Класс реализует `IConverter` из `FormatWheel.Sdk`: на слот Shift кладёт лепестки форматов, в `Convert` запускает `ffmpeg.exe` и парсит его вывод (`Duration` и `time=`) для кольца прогресса. `IsSlow = true`: файл предлагается получателю, как только кодирование закончилось, а если его бросили раньше — программа доделает его и сохранит в папку, куда бросили. Это рабочий пример для своих расширений — см. `src/FormatWheel.Ffmpeg/Ffmpeg.cs`.
 
 Ступень сжатия одна на все форматы, а каждый формат переводит её в свои параметры (crf, битрейт, q). Новый формат — это одна строчка `Target` в `Ffmpeg.cs`.
 
