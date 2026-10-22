@@ -45,6 +45,8 @@ en.InstallingFfmpeg=Installing FFmpeg via winget (this can take a minute)...
 ru.InstallingFfmpeg=Устанавливаю FFmpeg через winget (может занять минуту)...
 en.NoWinget=winget is not available. Install FFmpeg manually: winget install Gyan.FFmpeg
 ru.NoWinget=winget недоступен. Установите FFmpeg вручную: winget install Gyan.FFmpeg
+en.FfmpegFailed=Could not install FFmpeg automatically (winget code %1). The extension is installed, but video and audio won't convert until FFmpeg is installed: winget install Gyan.FFmpeg, or download it from ffmpeg.org and add the bin folder to PATH.
+ru.FfmpegFailed=Не получилось установить FFmpeg автоматически (код winget %1). Расширение установлено, но видео и аудио не будут конвертироваться, пока не установлен FFmpeg: winget install Gyan.FFmpeg или скачайте с ffmpeg.org и добавьте папку bin в PATH.
 
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -75,7 +77,14 @@ begin
   WizardForm.StatusLabel.Caption := ExpandConstant('{cm:InstallingFfmpeg}');
   if not Exec(ExpandConstant('{cmd}'), '/c winget install --id Gyan.FFmpeg -e --accept-source-agreements --accept-package-agreements',
        '', SW_HIDE, ewWaitUntilTerminated, code) then
+  begin
     MsgBox(ExpandConstant('{cm:NoWinget}'), mbInformation, MB_OK);
+    exit;
+  end;
+  // winget мог отработать с ошибкой (на рабочих ПК его часто блокируют, или нет сети), а то и вовсе
+  // отсутствовать (cmd вернёт 9009). Раньше это проходило молча: расширение «есть», а видео не берёт.
+  if (code <> 0) and not FileExists(ExpandConstant('{localappdata}\Microsoft\WinGet\Links\ffmpeg.exe')) then
+    MsgBox(FmtMessage(ExpandConstant('{cm:FfmpegFailed}'), [IntToStr(code)]), mbError, MB_OK);
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);

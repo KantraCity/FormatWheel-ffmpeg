@@ -8,7 +8,7 @@
     <!-- имя по соглашению FormatWheel.*, так приложение находит расширения -->
     <AssemblyName>FormatWheel.Ffmpeg</AssemblyName>
     <RootNamespace>FormatWheel.Ffmpeg</RootNamespace>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>

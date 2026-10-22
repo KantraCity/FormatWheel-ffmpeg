@@ -52,4 +52,11 @@ internal static class L
     public static string OneChannel => T("one channel", "один канал");
     public static string Normalize => T("Normalize", "Выровнять");
     public static string EvenLoudness => T("even loudness", "ровная громкость");
+
+    // FFmpeg не найден
+    public static string NoFfmpeg => T("No FFmpeg", "Нет FFmpeg");
+    public static string NeedsInstall => T("needs to be installed", "нужно установить");
+    public static string NoFfmpegError => T(
+        "FFmpeg is not installed. Install it (winget install Gyan.FFmpeg, or from ffmpeg.org) and try again.",
+        "FFmpeg не установлен. Установите его (winget install Gyan.FFmpeg или с ffmpeg.org) и попробуйте ещё раз.");
 }

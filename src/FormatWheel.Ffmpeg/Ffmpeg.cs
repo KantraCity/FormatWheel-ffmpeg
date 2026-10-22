@@ -11,7 +11,8 @@ using FormatWheel.Sdk;
 namespace FormatWheel.Ffmpeg;
 
 // Находит ffmpeg.exe. PATH читаем свежий из реестра: приложение запущено при входе в систему
-// и не увидит FFmpeg, поставленный через winget уже после этого.
+// и не увидит FFmpeg, поставленный через winget уже после этого. Папки winget смотрим и напрямую:
+// PATH после установки обновляется не всегда. Пока не нашли — ищем заново при каждом обращении.
 internal static class FfmpegExe
 {
     private static string? _cached;
@@ -26,6 +27,16 @@ internal static class FfmpegExe
             string? path = Environment.GetEnvironmentVariable("PATH", target);
             if (path != null) dirs.AddRange(path.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
         }
+        string winget = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "WinGet");
+        dirs.Add(System.IO.Path.Combine(winget, "Links"));
+        try
+        {
+            string packages = System.IO.Path.Combine(winget, "Packages");
+            if (Directory.Exists(packages))
+                foreach (string package in Directory.EnumerateDirectories(packages, "Gyan.FFmpeg*"))
+                    dirs.AddRange(Directory.EnumerateDirectories(package, "bin", SearchOption.AllDirectories));
+        }
+        catch { }
         foreach (string dir in dirs.Distinct(StringComparer.OrdinalIgnoreCase))
         {
             try
@@ -65,9 +76,13 @@ public abstract class FfmpegConverterBase : IConverter
     public bool IsSlow => true; // видео кодируется минутами
     public int MaxParallel => 1; // ffmpeg и так грузит все ядра
 
-    public bool CanHandle(string path) => FfmpegExe.Path != null && Inputs.Contains(System.IO.Path.GetExtension(path));
+    // Файлы берём, даже если FFmpeg не найден: иначе колесо молча не открывается, и непонятно почему.
+    // Без FFmpeg на колесе один лепесток «Нет FFmpeg», а конвертация объясняет, что поставить.
+    public bool CanHandle(string path) => Inputs.Contains(System.IO.Path.GetExtension(path));
 
-    public IReadOnlyList<WheelOption> MenuFor(WheelSlot slot, IReadOnlyList<string> files) => slot switch
+    public IReadOnlyList<WheelOption> MenuFor(WheelSlot slot, IReadOnlyList<string> files) => FfmpegExe.Path == null
+        ? (slot == WheelSlot.Primary ? new[] { new WheelOption(Axis, "missing", L.NoFfmpeg, L.NeedsInstall) } : Array.Empty<WheelOption>())
+        : slot switch
     {
         WheelSlot.Primary => PrimaryTargets.Select(t => new WheelOption(Axis, t, t.Label, t.Hint)).ToList(),
         // Ctrl — сжатие: одинаковые ступени для всех форматов, каждый переводит их в свои crf/битрейт
@@ -85,7 +100,7 @@ public abstract class FfmpegConverterBase : IConverter
 
     public string Convert(string source, Recipe recipe, Action<double> report, CancellationToken ct)
     {
-        string exe = FfmpegExe.Path ?? throw new InvalidOperationException("ffmpeg not found");
+        string exe = FfmpegExe.Path ?? throw new InvalidOperationException(L.NoFfmpegError);
         var target = recipe.Get<Target>(Axis) ?? PrimaryTargets[0];
         string extra = recipe.Get<string>(ExtraAxis) ?? "";
         var settings = new FfmpegSettings(
